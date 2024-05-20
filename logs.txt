@@ -1,0 +1,27 @@
+ANTLR runtime and generated code versions disagree: 4.13.1!=4.11.1
+ANTLR runtime and generated code versions disagree: 4.13.1!=4.11.1
+(single_input (simple_stmts (simple_stmt (expr_stmt (testlist_star_expr (test (or_test (and_test (not_test (comparison (expr (atom_expr (atom (name print)) (trailer ( (arglist (argument (test (or_test (and_test (not_test (comparison (expr (atom_expr (atom "hello world")))))))))) )))))))))))) \n))
+Traceback (most recent call last):
+  File "/home/rabadaba/kompilatory/main.py", line 24, in <module>
+    main()
+  File "/home/rabadaba/kompilatory/main.py", line 18, in main
+    cpp_code = visitor.visit(tree)
+  File "/home/rabadaba/.local/lib/python3.10/site-packages/antlr4/tree/Tree.py", line 34, in visit
+    return tree.accept(self)
+  File "/home/rabadaba/kompilatory/Python3Parser.py", line 941, in accept
+    return visitor.visitSingle_input(self)
+  File "/home/rabadaba/kompilatory/PythonToCppVisitor.py", line 6, in visitSingle_input
+    return self.visit(ctx.simple_stmts())
+  File "/home/rabadaba/.local/lib/python3.10/site-packages/antlr4/tree/Tree.py", line 34, in visit
+    return tree.accept(self)
+  File "/home/rabadaba/kompilatory/Python3Parser.py", line 2353, in accept
+    return visitor.visitSimple_stmts(self)
+  File "/home/rabadaba/kompilatory/Python3ParserVisitor.py", line 84, in visitSimple_stmts
+    return self.visitChildren(ctx)
+  File "/home/rabadaba/.local/lib/python3.10/site-packages/antlr4/tree/Tree.py", line 44, in visitChildren
+    childResult = c.accept(self)
+  File "/home/rabadaba/kompilatory/Python3Parser.py", line 2453, in accept
+    return visitor.visitSimple_stmt(self)
+  File "/home/rabadaba/kompilatory/PythonToCppVisitor.py", line 9, in visitSimple_stmt
+    return self.visit(ctx.simple_stmts(0)) + ";"
+AttributeError: 'Simple_stmtContext' object has no attribute 'simple_stmts'
