@@ -81,7 +81,20 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#simple_stmts.
     def visitSimple_stmts(self, ctx:Python3Parser.Simple_stmtsContext):
-        return self.visitChildren(ctx)
+        n = ctx.getChildCount()
+        result = None
+        for i in range(n):
+            c = ctx.getChild(i)
+
+            if c.getText() == '\n':
+               if result is None:
+                   result = c.getText()
+               else:
+                   result += c.getText()
+            else:
+                childResult = c.accept(self)
+                result = self.aggregateResult(result, childResult)
+        return result
 
 
     # Visit a parse tree produced by Python3Parser#simple_stmt.
@@ -106,7 +119,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#augassign.
     def visitAugassign(self, ctx:Python3Parser.AugassignContext):
-        return self.visitChildren(ctx)
+        return ctx.getText()
 
 
     # Visit a parse tree produced by Python3Parser#del_stmt.
@@ -506,12 +519,12 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#atom.
     def visitAtom(self, ctx:Python3Parser.AtomContext):
-        return self.visitChildren(ctx)
+        return ctx.getText()
 
 
     # Visit a parse tree produced by Python3Parser#name.
     def visitName(self, ctx:Python3Parser.NameContext):
-        return self.visitChildren(ctx)
+        return ctx.getText()
 
 
     # Visit a parse tree produced by Python3Parser#testlist_comp.
