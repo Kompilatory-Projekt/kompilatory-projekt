@@ -16,7 +16,6 @@ class Python3ParserListener(ParseTreeListener):
     def exitSingle_input(self, ctx:Python3Parser.Single_inputContext):
         pass
 
-
     # Enter a parse tree produced by Python3Parser#file_input.
     def enterFile_input(self, ctx:Python3Parser.File_inputContext):
         pass

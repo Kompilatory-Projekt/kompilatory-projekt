@@ -1,4 +1,5 @@
 # Generated from Python3Parser.g4 by ANTLR 4.11.1
+import utils
 from antlr4 import *
 if __name__ is not None and "." in __name__:
     from .Python3Parser import Python3Parser
@@ -8,6 +9,18 @@ else:
 # This class defines a complete generic visitor for a parse tree produced by Python3Parser.
 
 class Python3ParserVisitor(ParseTreeVisitor):
+    param_type_map = {
+        'int': 'int',
+        'float': 'float',
+        'str': 'string',
+        'bool': 'bool'
+    }
+    
+    def visitTerminal(self, node):
+        if node.getSymbol().text == "<EOF>":
+            return "<EOF>"
+        
+        return self.defaultResult()
 
     # Visit a parse tree produced by Python3Parser#single_input.
     def visitSingle_input(self, ctx:Python3Parser.Single_inputContext):
@@ -43,10 +56,21 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitAsync_funcdef(self, ctx:Python3Parser.Async_funcdefContext):
         return self.visitChildren(ctx)
 
-
     # Visit a parse tree produced by Python3Parser#funcdef.
     def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):
-        return self.visitChildren(ctx)
+        func_name = self.visit(ctx.name())
+        
+        params = []
+        if ctx.parameters().getChildCount() > 2:
+            params = [self.visit(param) for param in ctx.parameters().typedargslist().tfpdef()]
+            
+        body = self.visit(ctx.block())
+        
+        return_type = 'void'
+        if ctx.getChild(3).getText() == '->':
+            return_type = self.visit(ctx.getChild(4))
+
+        return f"{return_type} {func_name}({', '.join(params)}) {{\n{body}\n}}\n"
 
 
     # Visit a parse tree produced by Python3Parser#parameters.
@@ -61,7 +85,10 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#tfpdef.
     def visitTfpdef(self, ctx:Python3Parser.TfpdefContext):
-        return self.visitChildren(ctx)
+        param_name = self.visit(ctx.name())
+        param_type = self.visit(ctx.test())
+        
+        return f"{param_type} {param_name}"
 
 
     # Visit a parse tree produced by Python3Parser#varargslist.
@@ -76,7 +103,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#stmt.
     def visitStmt(self, ctx:Python3Parser.StmtContext):
-        return self.visitChildren(ctx)
+        result = self.visitChildren(ctx)
+        return result
 
 
     # Visit a parse tree produced by Python3Parser#simple_stmts.
@@ -94,16 +122,25 @@ class Python3ParserVisitor(ParseTreeVisitor):
             else:
                 childResult = c.accept(self)
                 result = self.aggregateResult(result, childResult)
+
         return result
 
 
     # Visit a parse tree produced by Python3Parser#simple_stmt.
     def visitSimple_stmt(self, ctx:Python3Parser.Simple_stmtContext):
-        return self.visitChildren(ctx)
+        result = self.visitChildren(ctx)
+
+        return result
 
 
     # Visit a parse tree produced by Python3Parser#expr_stmt.
     def visitExpr_stmt(self, ctx:Python3Parser.Expr_stmtContext):
+        if ctx.getChildCount() == 3:
+            # Assignment
+            if ctx.getChild(1).getText() == '=':
+                _type, _value = utils.getTypeOf(ctx.getChild(2).getText())
+                return f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value};"            
+            
         return self.visitChildren(ctx)
 
 
@@ -149,7 +186,11 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#return_stmt.
     def visitReturn_stmt(self, ctx:Python3Parser.Return_stmtContext):
-        return self.visitChildren(ctx)
+        # Get the return expression
+        expr = self.visit(ctx.testlist())
+
+        # Format the return statement into a C++ return statement
+        return f"return {expr};\n"
 
 
     # Visit a parse tree produced by Python3Parser#yield_stmt.
@@ -229,7 +270,11 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#if_stmt.
     def visitIf_stmt(self, ctx:Python3Parser.If_stmtContext):
-        return self.visitChildren(ctx)
+        condition = self.visit(ctx.test(0))  # Visit the condition of the if statement
+        block = self.visit(ctx.block(0))  # Visit the block of the if statement
+
+        # Format the condition and block into a C++ if statement
+        return f"if ({condition}) {{\n{block}}}\n"
 
 
     # Visit a parse tree produced by Python3Parser#while_stmt.
@@ -494,7 +539,33 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#comparison.
     def visitComparison(self, ctx:Python3Parser.ComparisonContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.expr(0))  # Visit the left operand
+
+        # Check if a comparison operator exists
+        if ctx.comp_op():
+            operator = ctx.comp_op(0).getText()
+        else:
+            operator = ''
+
+        right = self.visit(ctx.expr(1)) if ctx.expr(1) else ''  # Visit the right operand if it exists
+
+        # Map Python comparison operators to C++ ones
+        operator_mapping = {
+            '>': '>',
+            '<': '<',
+            '==': '==',
+            '!=': '!=',
+            '>=': '>=',
+            '<=': '<=',
+            'is': '==',
+            'isnot': '!='
+        }
+
+        # Convert the Python comparison operator to a C++ one
+        cpp_operator = operator_mapping.get(operator, operator)
+
+        # Return the C++ comparison expression
+        return f"{left} {cpp_operator} {right}" if operator else left
 
 
     # Visit a parse tree produced by Python3Parser#comp_op.
@@ -509,17 +580,60 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#expr.
     def visitExpr(self, ctx:Python3Parser.ExprContext):
+        if ctx.getChildCount() == 3:
+            left = self.visit(ctx.expr(0))
+            operator = ctx.getChild(1).getText()
+            right = self.visit(ctx.expr(1))
+
+            operator_mapping = {
+                '+': '+',
+                '-': '-',
+                '*': '*',
+                '/': '/',
+                '%': '%',
+                '**': 'pow',
+                '<<': '<<',
+                '>>': '>>',
+                '&': '&',
+                '^': '^',
+                '|': '|',
+                '//': '/'  # Integer division in Python, regular division in C++
+            }
+
+            if operator in operator_mapping:
+                operator = operator_mapping[operator]
+
+                return f"{left} {operator} {right}"
+            else:
+                return self.visitChildren(ctx)
+            
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by Python3Parser#atom_expr.
     def visitAtom_expr(self, ctx:Python3Parser.Atom_exprContext):
+        if ctx.getChild(0).getText() == 'print':
+            trailer = ctx.trailer(0)
+            
+            if trailer.getChild(1).getText() == ')': # If there are empty parentheses
+                return "cout << endl;"
+            
+            return f"cout << {self.visit(trailer)} << endl;"
+        
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by Python3Parser#atom.
     def visitAtom(self, ctx:Python3Parser.AtomContext):
-        return ctx.getText()
+        text = ctx.getText()
+        
+        if text in self.param_type_map:
+            return self.param_type_map.get(text, 'auto')
+            
+        if text.startswith("'") and text.endswith("'"):
+            return f'"{text[1:-1]}"'  # Changed single quotes to double quotes
+        
+        return text
 
 
     # Visit a parse tree produced by Python3Parser#name.
@@ -534,6 +648,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#trailer.
     def visitTrailer(self, ctx:Python3Parser.TrailerContext):
+        if ctx.getChild(1).getText() == '(' and ctx.getChild(2).getText() == ')':
+            return self.visit(ctx.arglist())
+        
         return self.visitChildren(ctx)
 
 
@@ -574,6 +691,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#arglist.
     def visitArglist(self, ctx:Python3Parser.ArglistContext):
+        print(ctx.getText())
         return self.visitChildren(ctx)
 
 
