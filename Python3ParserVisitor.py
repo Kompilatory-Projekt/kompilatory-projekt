@@ -17,21 +17,39 @@ class Python3ParserVisitor(ParseTreeVisitor):
     }
     
     exception_type_map = {
-            'Exception': 'std::exception',
-            'ValueError': 'std::invalid_argument',
-            'TypeError': 'std::invalid_argument',
-            'NameError': 'std::invalid_argument',
-            'ZeroDivisionError': 'std::domain_error',
-            'IndexError': 'std::out_of_range',
-            'KeyError': 'std::out_of_range',
-            'FileNotFoundError': 'std::invalid_argument',
-            'OSError': 'std::system_error',
-            'NotImplementedError': 'std::logic_error',
-            'AttributeError': 'std::invalid_argument',
-            'ImportError': 'std::invalid_argument',
-            'SyntaxError': 'std::invalid_argument',
-            'IndentationError': 'std::invalid_argument',
-        }
+        'Exception': 'std::exception',
+        'ValueError': 'std::invalid_argument',
+        'TypeError': 'std::invalid_argument',
+        'NameError': 'std::invalid_argument',
+        'ZeroDivisionError': 'std::domain_error',
+        'IndexError': 'std::out_of_range',
+        'KeyError': 'std::out_of_range',
+        'FileNotFoundError': 'std::invalid_argument',
+        'OSError': 'std::system_error',
+        'NotImplementedError': 'std::logic_error',
+        'AttributeError': 'std::invalid_argument',
+        'ImportError': 'std::invalid_argument',
+        'SyntaxError': 'std::invalid_argument',
+        'IndentationError': 'std::invalid_argument',
+        'OverflowError': 'std::overflow_error',
+        'RuntimeError': 'std::runtime_error',
+        'StopIteration': 'std::exception',
+        'UnboundLocalError': 'std::invalid_argument',
+        'UnicodeDecodeError': 'std::invalid_argument',
+        'UnicodeEncodeError': 'std::invalid_argument',
+        'UnicodeTranslateError': 'std::invalid_argument',
+        'AssertionError': 'std::logic_error',
+        'BufferError': 'std::runtime_error',
+        'EOFError': 'std::eof_error',
+        'ImportError': 'std::runtime_error',
+        'LookupError': 'std::out_of_range',
+        'MemoryError': 'std::bad_alloc',
+        'ReferenceError': 'std::invalid_argument',
+        'SystemExit': 'std::exception',
+        'TypeError': 'std::invalid_argument',
+        'ValueError': 'std::invalid_argument',
+        'Warning': 'std::exception',
+    }
 
     def aggregateResult(self, aggregate, nextResult):
         result = ""
@@ -149,21 +167,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#simple_stmts.
     def visitSimple_stmts(self, ctx:Python3Parser.Simple_stmtsContext):
-        n = ctx.getChildCount()
-        result = None
-        for i in range(n):
-            c = ctx.getChild(i)
-
-            if c.getText() == '\n':
-               if result is None:
-                   result = c.getText()
-               else:
-                   result += c.getText()
-            else:
-                childResult = c.accept(self)
-                result = self.aggregateResult(result, childResult)
-
-        return result
+        return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by Python3Parser#simple_stmt.
@@ -171,7 +175,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         if ctx.getText() == "pass":
             return ""
         
-        result = self.visitChildren(ctx) + ";"
+        result = self.visitChildren(ctx) + ";\n"
         
         return result
 
