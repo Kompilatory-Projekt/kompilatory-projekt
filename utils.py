@@ -1,5 +1,18 @@
 import antlr4
 
+def getTypeOfStructure(_value : str):
+    if _value[0] == '[' and _value[-1] == ']':
+        _dtype = getTypeOfStructure(_value[1:-1])
+        return f'vector<{_dtype}>'
+    elif _value[0] == '(' and _value[-1] == ')':
+        _dtype = getTypeOfStructure(_value)
+        return 'set<{_dtype}>'
+    elif _value[0] == '{' and _value[-1] == '}':
+        _dtype = getTypeOfStructure(_value)
+        return 'map'
+    return getTypeOf(_value.split(',')[0])[0]
+
+
 def getTypeOf(_value : str):
     _type = ''
     try:
@@ -12,9 +25,16 @@ def getTypeOf(_value : str):
         except ValueError:
             if _value == 'True' or _value == 'False':
                 _type = 'bool'
-            else:
+            elif _value[0] == '"' and _value[-1] == '"' or _value[0] == "'" and _value[-1] == "'":
                 _type = 'string'
-
+            else:
+                _type= getTypeOfStructure(_value)
+                _value = _value.replace('[','{').replace(']','}')
+                _value = _value.replace('(','{').replace(')','}')
+        
+    if _type is 'bool':
+        _value = _value.replace('True','true').replace('False','false')
+    _value = _value.replace('None','null')
     return [_type, _value]
 
 def print_tree(tree, parser):
