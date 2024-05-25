@@ -16,6 +16,31 @@ class Python3ParserVisitor(ParseTreeVisitor):
         'bool': 'bool'
     }
     
+    comparison_operator_map = {
+        '>': '>',
+        '<': '<',
+        '==': '==',
+        '!=': '!=',
+        '>=': '>=',
+        '<=': '<=',
+        'is': '==',
+        'isnot': '!='
+    }
+    
+    arithmetic_operator_map = {
+        '+': '+',
+        '-': '-',
+        '*': '*',
+        '/': '/',
+        '%': '%',
+        '<<': '<<',
+        '>>': '>>',
+        '&': '&',
+        '^': '^',
+        '|': '|',
+        '//': '/'  # Integer division in Python, regular division in C++
+    }
+    
     exception_type_map = {
         'Exception': 'std::exception',
         'ValueError': 'std::invalid_argument',
@@ -691,20 +716,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
         right = self.visit(ctx.expr(1)) if ctx.expr(1) else ''  # Visit the right operand if it exists
 
-        # Map Python comparison operators to C++ ones
-        operator_mapping = {
-            '>': '>',
-            '<': '<',
-            '==': '==',
-            '!=': '!=',
-            '>=': '>=',
-            '<=': '<=',
-            'is': '==',
-            'isnot': '!='
-        }
-
         # Convert the Python comparison operator to a C++ one
-        cpp_operator = operator_mapping.get(operator, operator)
+        cpp_operator = self.comparison_operator_map.get(operator, operator)
 
         # Return the C++ comparison expression
         return f"{left} {cpp_operator} {right}" if operator else left
@@ -727,30 +740,14 @@ class Python3ParserVisitor(ParseTreeVisitor):
             operator = ctx.getChild(1).getText()
             right = self.visit(ctx.expr(1))
 
-            operator_mapping = {
-                '+': '+',
-                '-': '-',
-                '*': '*',
-                '/': '/',
-                '%': '%',
-                '<<': '<<',
-                '>>': '>>',
-                '&': '&',
-                '^': '^',
-                '|': '|',
-                '//': '/'  # Integer division in Python, regular division in C++
-            }
-
             if operator == '**':
                 self.cpp_libraries_to_include.add("cmath")
                 return f"pow({left}, {right})"
 
-            if operator in operator_mapping:
-                operator = operator_mapping[operator]
+            if operator in self.arithmetic_operator_map:
+                operator = self.arithmetic_operator_map[operator]
 
                 return f"{left} {operator} {right}"
-            else:
-                return self.visitChildren(ctx)
             
         return self.visitChildren(ctx)
 
