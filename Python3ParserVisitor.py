@@ -131,36 +131,45 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#funcdef.
     def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):
         func_name = self.visit(ctx.name())
-        
-        params = []
-        if ctx.parameters().getChildCount() > 2:
-            params = [self.visit(param) for param in ctx.parameters().typedargslist().tfpdef()]
-            
+        params = self.visit(ctx.parameters())
         body = self.visit(ctx.block())
         
         return_type = 'void'
         if ctx.getChild(3).getText() == '->':
-            return_type = self.visit(ctx.getChild(4))
+            return_type = self.visit(ctx.getChild(4))        
 
-        return f"{return_type} {func_name}({', '.join(params)}) {body}"
+        return f"{return_type} {func_name}{params} {body}"
 
 
     # Visit a parse tree produced by Python3Parser#parameters.
     def visitParameters(self, ctx:Python3Parser.ParametersContext):
-        return self.visitChildren(ctx)
-
+        return f'({self.visitChildren(ctx)})'
 
     # Visit a parse tree produced by Python3Parser#typedargslist.
     def visitTypedargslist(self, ctx:Python3Parser.TypedargslistContext):
-        return self.visitChildren(ctx)
+        from Python3Parser import Python3Parser
+        params = []
+        
+        tfpdef_count = 0
+        for i in range(ctx.getChildCount()):
+            if isinstance(ctx.getChild(i), Python3Parser.TfpdefContext): # If the child is a parameter and not a comma
+                params.append(self.visit(ctx.tfpdef(tfpdef_count)))
+                tfpdef_count += 1
+        
+        return ', '.join(params)
 
 
     # Visit a parse tree produced by Python3Parser#tfpdef.
     def visitTfpdef(self, ctx:Python3Parser.TfpdefContext):
         param_name = self.visit(ctx.name())
-        param_type = self.visit(ctx.test())
         
-        return f"{param_type} {param_name}"
+        result = f"{param_name}"
+        
+        if ctx.test():
+            param_type = self.visit(ctx.test())
+            result = f"{param_type} {param_name}"
+        
+        return result
 
 
     # Visit a parse tree produced by Python3Parser#varargslist.
