@@ -51,6 +51,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
         'Warning': 'std::exception',
     }
 
+    cpp_libraries_to_include = list()
+
     def aggregateResult(self, aggregate, nextResult):
         result = ""
         if aggregate is not None:
@@ -87,7 +89,19 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#file_input.
     def visitFile_input(self, ctx:Python3Parser.File_inputContext):
         result = self.visitChildren(ctx)
-        return result
+        if "cout" in result:
+            self.cpp_libraries_to_include.append("iostream")
+
+        program_result = ""
+
+        for lib in self.cpp_libraries_to_include:
+            program_result += f"#include <{lib}>\n"
+
+        program_result += """using namespace std; \nint main() {\n"""
+        program_result += self.visitChildren(ctx)
+        program_result += """return 0;\n}"""
+
+        return program_result
 
 
     # Visit a parse tree produced by Python3Parser#eval_input.
