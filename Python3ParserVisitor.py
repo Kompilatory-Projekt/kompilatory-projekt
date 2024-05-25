@@ -16,6 +16,31 @@ class Python3ParserVisitor(ParseTreeVisitor):
         'bool': 'bool'
     }
     
+    comparison_operator_map = {
+        '>': '>',
+        '<': '<',
+        '==': '==',
+        '!=': '!=',
+        '>=': '>=',
+        '<=': '<=',
+        'is': '==',
+        'isnot': '!='
+    }
+    
+    arithmetic_operator_map = {
+        '+': '+',
+        '-': '-',
+        '*': '*',
+        '/': '/',
+        '%': '%',
+        '<<': '<<',
+        '>>': '>>',
+        '&': '&',
+        '^': '^',
+        '|': '|',
+        '//': '/'  # Integer division in Python, regular division in C++
+    }
+    
     exception_type_map = {
         'Exception': 'std::exception',
         'ValueError': 'std::invalid_argument',
@@ -51,7 +76,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         'Warning': 'std::exception',
     }
 
-    cpp_libraries_to_include = list()
+    cpp_libraries_to_include = set()
 
     def aggregateResult(self, aggregate, nextResult):
         result = ""
@@ -72,6 +97,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         # Map Python exception types to C++ ones
         python_exception_type = except_clause.getChild(1).getText()
         cpp_exception_type = self.exception_type_map.get(python_exception_type, 'std::exception')
+        
         return cpp_exception_type
 
     def get_exception_alias(self, except_clause: Python3Parser.Except_clauseContext):
@@ -89,17 +115,46 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#file_input.
     def visitFile_input(self, ctx:Python3Parser.File_inputContext):
         result = self.visitChildren(ctx)
+
+        class_definitions = ""
+        main_code = ""
+        eof_code = ""
+
+        lines = result.split("\n")
+        in_class = False
+        brace_count = 0
+
+        for line in lines:
+            stripped_line = line.strip()
+            if "class " in stripped_line:
+                in_class = True
+                    
+            if in_class:
+                class_definitions += line + "\n"
+                brace_count += stripped_line.count('{')
+                brace_count -= stripped_line.count('}')
+                
+                if brace_count == 0:
+                    in_class = False
+            elif "<EOF>" in stripped_line:
+                eof_code += "<EOF>\n"
+            else:
+                main_code += line + "\n"
+
         if "cout" in result:
-            self.cpp_libraries_to_include.append("iostream")
+            self.cpp_libraries_to_include.add("iostream")
 
         program_result = ""
 
         for lib in self.cpp_libraries_to_include:
             program_result += f"#include <{lib}>\n"
 
-        program_result += """using namespace std; \nint main() {\n"""
-        program_result += self.visitChildren(ctx)
+        program_result += """using namespace std; \n"""
+        program_result += class_definitions
+        program_result += """int main() {\n""" 
+        program_result += main_code
         program_result += """return 0;\n}"""
+        program_result += eof_code
 
         return program_result
 
@@ -136,7 +191,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         
         return_type = 'void'
         if ctx.getChild(3).getText() == '->':
-            return_type = self.visit(ctx.getChild(4))        
+            return_type = self.visit(ctx.getChild(4))           
 
         return f"{return_type} {func_name}{params} {body}"
 
@@ -155,6 +210,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
             if isinstance(ctx.getChild(i), Python3Parser.TfpdefContext): # If the child is a parameter and not a comma
                 params.append(self.visit(ctx.tfpdef(tfpdef_count)))
                 tfpdef_count += 1
+        
+        params = filter(lambda param: 'self' != param.split(' ')[1], params)
         
         return ', '.join(params)
 
@@ -210,7 +267,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
             if ctx.getChild(1).getText() == '=':
                 _type, _value = utils.get_type_of(ctx.getChild(2).getText())
                 result = f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value}"
-                return result           
+                return result
+        # Convert ** to pow
+                       
         return self.visitChildren(ctx)   
 
 
@@ -383,15 +442,12 @@ class Python3ParserVisitor(ParseTreeVisitor):
         else:
             result = f"for(auto {param} : {test[0]}) {block}"
 
-        print(self.visit(ctx.testlist()))
-
         return result
 
 
     # Visit a parse tree produced by Python3Parser#try_stmt.
     def visitTry_stmt(self, ctx:Python3Parser.Try_stmtContext):
         result = self.visitChildren(ctx)
-        
         result = f"try {result}"
         
         return result
@@ -420,6 +476,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitBlock(self, ctx:Python3Parser.BlockContext):
         result =  self.visitChildren(ctx)
         result = f"{{\n{result}}}\n"
+        
         return result
 
     # Visit a parse tree produced by Python3Parser#match_stmt.
@@ -659,20 +716,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
         right = self.visit(ctx.expr(1)) if ctx.expr(1) else ''  # Visit the right operand if it exists
 
-        # Map Python comparison operators to C++ ones
-        operator_mapping = {
-            '>': '>',
-            '<': '<',
-            '==': '==',
-            '!=': '!=',
-            '>=': '>=',
-            '<=': '<=',
-            'is': '==',
-            'isnot': '!='
-        }
-
         # Convert the Python comparison operator to a C++ one
-        cpp_operator = operator_mapping.get(operator, operator)
+        cpp_operator = self.comparison_operator_map.get(operator, operator)
 
         # Return the C++ comparison expression
         return f"{left} {cpp_operator} {right}" if operator else left
@@ -695,27 +740,14 @@ class Python3ParserVisitor(ParseTreeVisitor):
             operator = ctx.getChild(1).getText()
             right = self.visit(ctx.expr(1))
 
-            operator_mapping = {
-                '+': '+',
-                '-': '-',
-                '*': '*',
-                '/': '/',
-                '%': '%',
-                '**': 'pow',
-                '<<': '<<',
-                '>>': '>>',
-                '&': '&',
-                '^': '^',
-                '|': '|',
-                '//': '/'  # Integer division in Python, regular division in C++
-            }
+            if operator == '**':
+                self.cpp_libraries_to_include.add("cmath")
+                return f"pow({left}, {right})"
 
-            if operator in operator_mapping:
-                operator = operator_mapping[operator]
+            if operator in self.arithmetic_operator_map:
+                operator = self.arithmetic_operator_map[operator]
 
                 return f"{left} {operator} {right}"
-            else:
-                return self.visitChildren(ctx)
             
         return self.visitChildren(ctx)
 
@@ -729,6 +761,14 @@ class Python3ParserVisitor(ParseTreeVisitor):
                 return "cout << endl"
             
             return f"cout << {self.visit(trailer)} << endl"
+        
+        if ctx.getChild(0).getText() == 'abs':
+            self.cpp_libraries_to_include.add("cmath")
+            return f"abs({self.visit(ctx.trailer(0))})"
+        
+        if ctx.getChild(0).getText() == 'round':
+            self.cpp_libraries_to_include.add("cmath")
+            return f"round({self.visit(ctx.trailer(0))})"
         
         return self.visitChildren(ctx)
 
@@ -803,16 +843,15 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#classdef.
     def visitClassdef(self, ctx:Python3Parser.ClassdefContext):
-        return self.visitChildren(ctx)
+        return f"{ctx.getChild(0).getText()} {self.visitChildren(ctx)}"
 
 
     # Visit a parse tree produced by Python3Parser#arglist.
     def visitArglist(self, ctx:Python3Parser.ArglistContext):
-
         result = ctx.getChild(0).getText()
         for i in range(1, ctx.getChildCount()):
             result += ctx.getChild(i).getText()
-            
+        
         return result
 
 
@@ -854,7 +893,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#strings.
     def visitStrings(self, ctx:Python3Parser.StringsContext):
         return self.visitChildren(ctx)
-
 
 
 del Python3Parser
