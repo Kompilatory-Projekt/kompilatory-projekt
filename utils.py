@@ -1,41 +1,79 @@
 import antlr4
 
-def getTypeOfStructure(_value : str):
-    if _value[0] == '[' and _value[-1] == ']':
-        _dtype = getTypeOfStructure(_value[1:-1])
-        return f'vector<{_dtype}>'
-    elif _value[0] == '(' and _value[-1] == ')':
-        _dtype = getTypeOfStructure(_value)
-        return 'set<{_dtype}>'
-    elif _value[0] == '{' and _value[-1] == '}':
-        _dtype = getTypeOfStructure(_value)
-        return 'map'
-    return getTypeOf(_value.split(',')[0])[0]
+def bad_type() -> str:
+    return 'bad_type'
 
+def get_type_of_structure(value: str):
+    bracketing = get_bracketing(value)
+    if value[0] == '[':
+        _type = 'vector'
+    elif value[0] == '(':
+        _type = 'set'
+    elif value[0] == '{':
+        _type = 'map'
+    
+    _basic_type = get_type_of(bracketing[0])[0]
+    for v in bracketing:
+        if get_type_of(v)[0] != _basic_type:
+            return bad_type()
+        
+    return _type + '<' + _basic_type + '>'
 
-def getTypeOf(_value : str):
-    _type = ''
+def get_type_of(value: str):
+    value = value.strip()
+    if value in ('None', ''):
+        return 'None'
+
     try:
-        int(_value)
+        int(value)
         _type = 'int'
     except ValueError:
         try:
-            float(_value)
+            float(value)
             _type = 'float'
         except ValueError:
-            if _value == 'True' or _value == 'False':
+            if value == 'True' or value == 'False':
                 _type = 'bool'
-            elif _value[0] == '"' and _value[-1] == '"' or _value[0] == "'" and _value[-1] == "'":
+            elif value[0] == '"' or value[0] == "'":
                 _type = 'string'
+            elif value[0] == '[' or value[0] == '(' or value[0] == '{':
+                _type = get_type_of_structure(value)
             else:
-                _type= getTypeOfStructure(_value)
-                _value = _value.replace('[','{').replace(']','}')
-                _value = _value.replace('(','{').replace(')','}')
-        
-    if _type is 'bool':
-        _value = _value.replace('True','true').replace('False','false')
-    _value = _value.replace('None','null')
-    return [_type, _value]
+                return bad_type(), value
+            
+    return _type, repair_value(value)
+
+def repair_value(value: str):
+    value = value.strip()
+    if value[0] == '[' or value[0] == '(' or value[0] == '{':
+        bracketing = get_bracketing(value)
+        value = '{' + ','.join([repair_value(v) for v in bracketing]) + '}'
+    elif value[0] != '"' and value[0] != "'":
+        value = value.replace('None', 'null') 
+        value = value.replace('True', 'true').replace('False', 'false')
+    return value
+
+def get_bracketing(value: str): # [[1,2,3],[4,5,6],[]] good,    [1,2,3],[4,5,6],[] bad
+    value = value.strip()[1:-1] 
+    result = []
+    level = 0
+
+    while value:
+        for i in range(len(value)):
+            if value[i] in ('[', '(', '{'):
+                level += 1
+            elif value[i] in (']', ')', '}'):
+                level -= 1
+
+            if level == 0 and value[i] == ',':
+                result.append(value[:i])
+                value = value[i+1:]
+                break
+        else:
+            result.append(value)
+            value = ''
+
+    return result
 
 def print_tree(tree, parser):
     tree_str = tree.toStringTree(recog=parser)

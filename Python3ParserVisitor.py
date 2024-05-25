@@ -208,7 +208,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         if ctx.getChildCount() == 3:
             # Assignment
             if ctx.getChild(1).getText() == '=':
-                _type, _value = utils.getTypeOf(ctx.getChild(2).getText())
+                _type, _value = utils.get_type_of(ctx.getChild(2).getText())
                 result = f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value}"
                 return result           
         return self.visitChildren(ctx)   
