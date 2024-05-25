@@ -89,6 +89,32 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#file_input.
     def visitFile_input(self, ctx:Python3Parser.File_inputContext):
         result = self.visitChildren(ctx)
+
+        class_definitions = ""
+        main_code = ""
+        eof_code = ""
+
+        lines = result.split("\n")
+        in_class = False
+        brace_count = 0
+
+        for line in lines:
+            stripped_line = line.strip()
+            if "class " in stripped_line:
+                in_class = True
+                    
+            if in_class:
+                class_definitions += line + "\n"
+                brace_count += stripped_line.count('{')
+                brace_count -= stripped_line.count('}')
+                
+                if brace_count == 0:
+                    in_class = False
+            elif "<EOF>" in stripped_line:
+                eof_code += "<EOF>\n"
+            else:
+                main_code += line + "\n"
+
         if "cout" in result:
             self.cpp_libraries_to_include.add("iostream")
 
@@ -97,9 +123,12 @@ class Python3ParserVisitor(ParseTreeVisitor):
         for lib in self.cpp_libraries_to_include:
             program_result += f"#include <{lib}>\n"
 
-        program_result += """using namespace std; \nint main() {\n"""
-        program_result += self.visitChildren(ctx)
+        program_result += """using namespace std; \n"""
+        program_result += class_definitions
+        program_result += """int main() {\n""" 
+        program_result += main_code
         program_result += """return 0;\n}"""
+        program_result += eof_code
 
         return program_result
 
@@ -132,17 +161,21 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):
         func_name = self.visit(ctx.name())
         params = self.visit(ctx.parameters())
+        params = self.visit(ctx.parameters())
         body = self.visit(ctx.block())
         
         return_type = 'void'
         if ctx.getChild(3).getText() == '->':
             return_type = self.visit(ctx.getChild(4))        
+            return_type = self.visit(ctx.getChild(4))        
 
+        return f"{return_type} {func_name}{params} {body}"
         return f"{return_type} {func_name}{params} {body}"
 
 
     # Visit a parse tree produced by Python3Parser#parameters.
     def visitParameters(self, ctx:Python3Parser.ParametersContext):
+        return f'({self.visitChildren(ctx)})'
         return f'({self.visitChildren(ctx)})'
 
     # Visit a parse tree produced by Python3Parser#typedargslist.
@@ -155,6 +188,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
             if isinstance(ctx.getChild(i), Python3Parser.TfpdefContext): # If the child is a parameter and not a comma
                 params.append(self.visit(ctx.tfpdef(tfpdef_count)))
                 tfpdef_count += 1
+        
+        params = filter(lambda param: 'self' != param.split(' ')[1], params)
         
         return ', '.join(params)
 
@@ -169,6 +204,13 @@ class Python3ParserVisitor(ParseTreeVisitor):
             param_type = self.visit(ctx.test())
             result = f"{param_type} {param_name}"
         
+        result = f"{param_name}"
+        
+        if ctx.test():
+            param_type = self.visit(ctx.test())
+            result = f"{param_type} {param_name}"
+        
+        return result
         return result
 
 
@@ -816,16 +858,15 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#classdef.
     def visitClassdef(self, ctx:Python3Parser.ClassdefContext):
-        return self.visitChildren(ctx)
+        return f"{ctx.getChild(0).getText()} {self.visitChildren(ctx)}"
 
 
     # Visit a parse tree produced by Python3Parser#arglist.
     def visitArglist(self, ctx:Python3Parser.ArglistContext):
-
         result = ctx.getChild(0).getText()
         for i in range(1, ctx.getChildCount()):
             result += ctx.getChild(i).getText()
-            
+        
         return result
 
 
