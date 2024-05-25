@@ -72,6 +72,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         # Map Python exception types to C++ ones
         python_exception_type = except_clause.getChild(1).getText()
         cpp_exception_type = self.exception_type_map.get(python_exception_type, 'std::exception')
+        
         return cpp_exception_type
 
     def get_exception_alias(self, except_clause: Python3Parser.Except_clauseContext):
@@ -161,21 +162,17 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):
         func_name = self.visit(ctx.name())
         params = self.visit(ctx.parameters())
-        params = self.visit(ctx.parameters())
         body = self.visit(ctx.block())
         
         return_type = 'void'
         if ctx.getChild(3).getText() == '->':
-            return_type = self.visit(ctx.getChild(4))        
-            return_type = self.visit(ctx.getChild(4))        
+            return_type = self.visit(ctx.getChild(4))           
 
-        return f"{return_type} {func_name}{params} {body}"
         return f"{return_type} {func_name}{params} {body}"
 
 
     # Visit a parse tree produced by Python3Parser#parameters.
     def visitParameters(self, ctx:Python3Parser.ParametersContext):
-        return f'({self.visitChildren(ctx)})'
         return f'({self.visitChildren(ctx)})'
 
     # Visit a parse tree produced by Python3Parser#typedargslist.
@@ -204,13 +201,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
             param_type = self.visit(ctx.test())
             result = f"{param_type} {param_name}"
         
-        result = f"{param_name}"
-        
-        if ctx.test():
-            param_type = self.visit(ctx.test())
-            result = f"{param_type} {param_name}"
-        
-        return result
         return result
 
 
@@ -427,15 +417,12 @@ class Python3ParserVisitor(ParseTreeVisitor):
         else:
             result = f"for(auto {param} : {test[0]}) {block}"
 
-        print(self.visit(ctx.testlist()))
-
         return result
 
 
     # Visit a parse tree produced by Python3Parser#try_stmt.
     def visitTry_stmt(self, ctx:Python3Parser.Try_stmtContext):
         result = self.visitChildren(ctx)
-        
         result = f"try {result}"
         
         return result
@@ -464,6 +451,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitBlock(self, ctx:Python3Parser.BlockContext):
         result =  self.visitChildren(ctx)
         result = f"{{\n{result}}}\n"
+        
         return result
 
     # Visit a parse tree produced by Python3Parser#match_stmt.
@@ -908,7 +896,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#strings.
     def visitStrings(self, ctx:Python3Parser.StringsContext):
         return self.visitChildren(ctx)
-
 
 
 del Python3Parser
