@@ -92,6 +92,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
         class_definitions = ""
         main_code = ""
+        eof_code = ""
 
         lines = result.split("\n")
         in_class = False
@@ -109,6 +110,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
                 
                 if brace_count == 0:
                     in_class = False
+            elif "<EOF>" in stripped_line:
+                eof_code += "<EOF>\n"
             else:
                 main_code += line + "\n"
 
@@ -125,6 +128,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         program_result += """int main() {\n""" 
         program_result += main_code
         program_result += """return 0;\n}"""
+        program_result += eof_code
 
         return program_result
 
