@@ -3,7 +3,7 @@ import antlr4
 def bad_type() -> str:
     return 'bad_type'
 
-def get_type_of_structure(value: str):
+def get_type_of_structure(value: str): # [[1,2,3],[4,5,6],[]] good,    [1,2,3],[4,5,6],[] bad
     bracketing = get_bracketing(value)
     if value[0] == '[':
         _type = 'vector'
@@ -11,12 +11,19 @@ def get_type_of_structure(value: str):
         _type = 'set'
     elif value[0] == '{':
         _type = 'map'
-    
-    _basic_type = get_type_of(bracketing[0])[0]
+
+    _basic_type = 'None'
     for v in bracketing:
-        if get_type_of(v)[0] != _basic_type:
+        _vtype = get_type_of(v)[0]
+
+        if _basic_type == 'None' and _vtype != 'None':
+            _basic_type = _vtype
+        elif _vtype != _basic_type and _vtype != 'None':
             return bad_type()
-        
+
+    if _basic_type == 'None':
+        return 'None'
+    
     return _type + '<' + _basic_type + '>'
 
 def get_type_of(value: str):
