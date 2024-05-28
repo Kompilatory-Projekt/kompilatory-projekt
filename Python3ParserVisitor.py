@@ -299,16 +299,27 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#typedargslist.
     def visitTypedargslist(self, ctx:Python3Parser.TypedargslistContext):
-        from Python3Parser import Python3Parser
         params = []
+
+        for i in range(ctx.getChildCount()):
+            params.append(self.visit(ctx.getChild(i)))
+            if params[-1] is None:
+                params.pop()
+    
+        if 'self' in params:
+            params.remove('self')
         
-        num_of_args = ctx.getChildCount() - ctx.getChildCount() // 2 # Subtract commas
-        for i in range(num_of_args):
-            params.append(self.visit(ctx.tfpdef(i)))
-        
-        params = filter(lambda param: 'self' != param.split(' ')[1], params)
-        
-        return ', '.join(params)
+        result = []
+        for i in range(len(params)):
+            if len(params[i].split()) == 1:
+                continue;
+            
+            result.append(params[i])
+            if i < len(params)-1 and len(params[i+1].split()) == 1:
+                result[-1] += f" = {params[i+1]}"
+        result = ', '.join(result)
+
+        return result
 
 
     # Visit a parse tree produced by Python3Parser#tfpdef.
@@ -319,9 +330,11 @@ class Python3ParserVisitor(ParseTreeVisitor):
         
         result = f"{param_name}"
         
+        param_type = 'auto'
         if ctx.test():
             param_type = self.visit(ctx.test())
-            result = f"{param_type} {param_name}"
+        
+        result = f"{param_type} {param_name}"
         
         return result
 
