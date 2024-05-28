@@ -232,7 +232,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
                 main_code += line + "\n"
 
         if "cout" in result:
-            self.cpp_libraries_to_include.add("iostream")
+            self.cpp_libraries_to_include.add("bits/stdc++.h")
 
         program_result = ""
 
@@ -245,7 +245,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         program_result += """int main() {\n""" 
         program_result += main_code
         program_result += """return 0;\n}"""
-        program_result += eof_code
+        # program_result += eof_code
 
         return program_result
 
