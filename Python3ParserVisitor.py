@@ -1,5 +1,7 @@
 # Generated from Python3Parser.g4 by ANTLR 4.11.1
 import utils
+from collections import deque
+
 from antlr4 import *
 if __name__ is not None and "." in __name__:
     from .Python3Parser import Python3Parser
@@ -9,6 +11,69 @@ else:
 # This class defines a complete generic visitor for a parse tree produced by Python3Parser.
 
 class Python3ParserVisitor(ParseTreeVisitor):
+    class Scopes:
+        scopes = deque()
+        
+        GLOBAL_SCOPE_FUNCTIONS = {"print", "range", "abs", "round"}
+
+        def __init__(self):
+            self.enterScope() # Enter the global scope
+            # Add the global scope functions to the global scope
+            for func in self.GLOBAL_SCOPE_FUNCTIONS:
+                self.getCurrentScope()["functions"].add(func)
+        
+        def enterScope(self):
+            self.scopes.append({"variables": set(), "functions": set(), "classes": set()})
+            
+        def exitScope(self):
+            self.scopes.pop()
+                        
+        def getCurrentScope(self):
+            return self.scopes[-1]
+        
+        def inScope(self, name, return_subscope: bool = False) -> bool:
+            for scope in self.scopes:
+                for subscope in scope.values():
+                    if name in subscope:
+                        if return_subscope:
+                            return True, subscope
+                        return True
+                    
+            return False
+        
+        def addToCurrentScope(self, name, subscope):
+            if self.inScope(name): # If the variable/function/class is overriden
+                self.removeFromCurrentScope(name)
+            
+            self.getCurrentScope()[subscope].add(name)
+            
+        def removeFromCurrentScope(self, name):
+            self.errorIfNotInScope(name)
+            
+            for scope in self.scopes:
+                for subscope in scope.values():
+                    if name in scope[subscope]:
+                        scope[subscope].remove(name)
+                        break
+        
+        subscope_names = {
+                "variables": "Variable",
+                "functions": "Function",
+                "classes": "Class"
+            }
+
+        def errorIfNotInScope(self, name):
+            is_scope = self.inScope(name)
+            if not is_scope:
+                raise NameError(f"{name} does not exist in the current scope")
+            
+        def errorIfInScope(self, name):
+            is_scope, subscope = self.inScope(name, subscope, return_subscope=True)
+            if is_scope:
+                raise NameError(f"{subscope} {name} already exists in the current scope")
+            
+    
+    
     param_type_map = {
         'int': 'int',
         'float': 'float',
@@ -77,21 +142,11 @@ class Python3ParserVisitor(ParseTreeVisitor):
     }
 
     cpp_libraries_to_include = set()
-
-    def aggregateResult(self, aggregate, nextResult):
-        result = ""
-        if aggregate is not None:
-            result += aggregate
-        if nextResult is not None:
-            result += nextResult
-        
-        return result
+    scopes = Scopes()
     
-    def visitTerminal(self, node):
-        if node.getSymbol().text == "<EOF>":
-            return "<EOF>"
-        
-        return self.defaultResult()
+    # --------------
+    # Custom methods
+    # --------------
     
     def map_exception_type(self, except_clause):
         # Map Python exception types to C++ ones
@@ -106,6 +161,32 @@ class Python3ParserVisitor(ParseTreeVisitor):
             return except_clause.alias().getText()
         else:
             return 'e'  # Default alias
+        
+    def is_nth_child(self, ctx, n):
+        parent = ctx.parentCtx
+        if not parent:
+            return False
+        
+        return parent.getChild(n) == ctx
+
+    # --------------
+    # ANTLR4 methods
+    # --------------
+    
+    def aggregateResult(self, aggregate, nextResult):
+        result = ""
+        if aggregate is not None:
+            result += aggregate
+        if nextResult is not None:
+            result += nextResult
+        
+        return result
+    
+    def visitTerminal(self, node):
+        if node.getSymbol().text == "<EOF>":
+            return "<EOF>"
+        
+        return self.defaultResult()
 
     # Visit a parse tree produced by Python3Parser#single_input.
     def visitSingle_input(self, ctx:Python3Parser.Single_inputContext):
@@ -184,14 +265,21 @@ class Python3ParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by Python3Parser#funcdef.
-    def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):
+    def visitFuncdef(self, ctx:Python3Parser.FuncdefContext):    
         func_name = self.visit(ctx.name())
-        params = self.visit(ctx.parameters())
-        body = self.visit(ctx.block())
         
         return_type = 'void'
         if ctx.getChild(3).getText() == '->':
             return_type = self.visit(ctx.getChild(4))           
+
+        self.scopes.addToCurrentScope(func_name, "functions")
+        
+        self.scopes.enterScope() # Enter the function scope
+        
+        params = self.visit(ctx.parameters())
+        body = self.visit(ctx.block())
+        
+        self.scopes.exitScope() # Exit the function scope after visiting the block
 
         return f"{return_type} {func_name}{params} {body}"
 
@@ -205,11 +293,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
         from Python3Parser import Python3Parser
         params = []
         
-        tfpdef_count = 0
-        for i in range(ctx.getChildCount()):
-            if isinstance(ctx.getChild(i), Python3Parser.TfpdefContext): # If the child is a parameter and not a comma
-                params.append(self.visit(ctx.tfpdef(tfpdef_count)))
-                tfpdef_count += 1
+        num_of_args = ctx.getChildCount() - ctx.getChildCount() // 2 # Subtract commas
+        for i in range(num_of_args):
+            params.append(self.visit(ctx.tfpdef(i)))
         
         params = filter(lambda param: 'self' != param.split(' ')[1], params)
         
@@ -219,6 +305,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by Python3Parser#tfpdef.
     def visitTfpdef(self, ctx:Python3Parser.TfpdefContext):
         param_name = self.visit(ctx.name())
+        
+        self.scopes.addToCurrentScope(param_name, "variables")
         
         result = f"{param_name}"
         
@@ -262,15 +350,34 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#expr_stmt.
     def visitExpr_stmt(self, ctx:Python3Parser.Expr_stmtContext):
-        if ctx.getChildCount() == 3:
-            # Assignment
-            if ctx.getChild(1).getText() == '=':
-                _type, _value = utils.get_type_of(ctx.getChild(2).getText())
-                if _value[0] is not '{':
-                    _type = 'auto'
-                return f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value}"
-        # Convert ** to pow
-                       
+        from Python3Parser import Python3Parser
+        
+        # Variable assignment eg. a = 2
+        if ctx.getChildCount() == 3 and ctx.getChild(1).getText() == '=':
+                type, value = utils.get_type_of(ctx.getChild(2).getText())
+                name = self.visit(ctx.getChild(0))
+                
+                self.scopes.addToCurrentScope(name, "variables")
+                
+                result = f"{type} {name} = {value}"
+                
+                return result
+            
+        # Type-annotated assignment eg. a: int = 2
+        elif isinstance(ctx.getChild(1), Python3Parser.AnnassignContext):
+            name = self.visit(ctx.testlist_star_expr(0))
+            type = self.visit(ctx.annassign().test(0))
+            value = self.visit(ctx.annassign().test(1))
+            
+            # Check if value type is the same as the annotated type
+            value_type, _ = utils.get_type_of(value)
+            if value_type != type:
+                raise TypeError(f"Type mismatch: {value_type} and {type}")
+            
+            self.scopes.addToCurrentScope(name, "variables")
+            
+            return f"{type} {name} = {value}"
+                
         return self.visitChildren(ctx)   
 
 
@@ -432,7 +539,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         block = self.visit(ctx.block(0))
 
         if test.startswith("range"):
-            test = test[5:].split(',')
+            test = test[6:-1].split(',')
             if len(test) == 1:
                 test = [0, test[0], 1]
             elif len(test) == 2:
@@ -736,6 +843,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#expr.
     def visitExpr(self, ctx:Python3Parser.ExprContext):
+        # If the expr has 3 children, it is an "item operator item" expression
         if ctx.getChildCount() == 3:
             left = self.visit(ctx.expr(0))
             operator = ctx.getChild(1).getText()
@@ -749,40 +857,86 @@ class Python3ParserVisitor(ParseTreeVisitor):
                 operator = self.arithmetic_operator_map[operator]
 
                 return f"{left} {operator} {right}"
-            
+        
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by Python3Parser#atom_expr.
     def visitAtom_expr(self, ctx:Python3Parser.Atom_exprContext):
-        if ctx.getChild(0).getText() == 'print':
+        name = self.visit(ctx.atom()) # Atom expr always has one atom
+        
+        if name == 'print':
             trailer = ctx.trailer(0)
             
             if trailer.getChild(1).getText() == ')': # If there are empty parentheses
                 return "cout << endl"
             
-            return f"cout << {self.visit(trailer)} << endl"
+            cout_args = self.visit(trailer)
+            
+            if cout_args.startswith('(') and cout_args.endswith(')'):
+                cout_args = cout_args[1:-1]
+    
+            return f"cout << {cout_args} << endl"
         
-        if ctx.getChild(0).getText() == 'abs':
+        if name == 'abs':
             self.cpp_libraries_to_include.add("cmath")
-            return f"abs({self.visit(ctx.trailer(0))})"
+            return f"abs{self.visit(ctx.trailer(0))}"
         
-        if ctx.getChild(0).getText() == 'round':
+        if name == 'round':
             self.cpp_libraries_to_include.add("cmath")
-            return f"round({self.visit(ctx.trailer(0))})"
+            return f"round{self.visit(ctx.trailer(0))}"
         
         return self.visitChildren(ctx)
 
+    def get_nth_parent(self, ctx, n):
+        parent = ctx
+        for _ in range(n):
+            parent = parent.parentCtx
+            if not parent:
+                break
+            
+        return parent
 
     # Visit a parse tree produced by Python3Parser#atom.
     def visitAtom(self, ctx:Python3Parser.AtomContext):
+        from Python3Parser import Python3Parser
         text = ctx.getText()
         
         if text in self.param_type_map:
             return self.param_type_map.get(text, 'auto')
-            
+        
         if text.startswith("'") and text.endswith("'"):
-            return f'"{text[1:-1]}"'  # Changed single quotes to double quotes
+            # Changed single quotes to double quotes
+            return f'"{text[1:-1]}"'
+        
+        if ctx.name():
+            name = self.visit(ctx.name())
+            
+            # Check if the atom comes from assignment
+            parent_argument = self.get_nth_parent(ctx, 8) # Argument is 8 levels up
+            parent_expr_stmt = self.get_nth_parent(ctx, 9) # Expr_stmt is 9 levels up
+            
+            # Check if atom is on the left side of an assignment eg. function(atom = 1)
+            is_lhs_of_keyword_argument = None
+            if isinstance(parent_argument, Python3Parser.ArgumentContext):
+                is_keyword_argument = parent_argument.getChildCount() == 3
+                is_lhs_of_assignment = parent_argument.getChild(0) == self.get_nth_parent(ctx, 7) # 7 levels up is the test
+                
+                is_lhs_of_keyword_argument = (is_keyword_argument and is_lhs_of_assignment)
+                
+            is_being_assigned_to = None
+            if isinstance(parent_expr_stmt, Python3Parser.Expr_stmtContext):
+                is_being_assigned_to = isinstance(parent_expr_stmt.getChild(1), Python3Parser.AnnassignContext) or parent_expr_stmt.getChildCount() == 3
+            
+            # If atom is a lhs of an assignment or a keyword argument, return the name, don't check if it exists in scope
+            if is_being_assigned_to or is_lhs_of_keyword_argument:
+                return self.visitChildren(ctx)
+
+            # If atom is a variable, funcion call or class name check if it exists in scope
+            if not self.scopes.inScope(name):
+                raise NameError(f"{name} does not exist in any scope")
+            
+            return self.visitChildren(ctx)
         
         return text
 
@@ -799,8 +953,13 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#trailer.
     def visitTrailer(self, ctx:Python3Parser.TrailerContext):
-        if ctx.getChild(1).getText() == '(' and ctx.getChild(2).getText() == ')':
-            return self.visit(ctx.arglist())
+        
+        if ctx.getChildCount() == 2:
+            return ctx.getText()
+        
+        if ctx.getChildCount() == 3:
+            if ctx.getChild(0).getText() == '(' and ctx.getChild(2).getText() == ')':
+                return '(' + self.visit(ctx.getChild(1)) + ')'
         
         return self.visitChildren(ctx)
 
@@ -849,15 +1008,34 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#arglist.
     def visitArglist(self, ctx:Python3Parser.ArglistContext):
-        result = ctx.getChild(0).getText()
-        for i in range(1, ctx.getChildCount()):
-            result += ctx.getChild(i).getText()
+        result = ""
+        
+        num_of_args = ctx.getChildCount() - ctx.getChildCount() // 2 # Subtract commas
+        for i in range(num_of_args):
+            result += self.visit(ctx.argument(i))
+            if i < num_of_args - 1:
+                result += ", "
         
         return result
 
 
     # Visit a parse tree produced by Python3Parser#argument.
     def visitArgument(self, ctx:Python3Parser.ArgumentContext):
+        # If the argument is a single parameter, func(a)
+        if ctx.getChildCount() == 1:
+            if ctx.getChild(0).getChildCount() == 1: # TODO: Check if this is correct
+                arg_name = self.visit(ctx.getChild(0))
+                
+                # self.scopes.errorIfNotInScope(arg_name)
+                
+                return arg_name
+        # If argument is a keyword argument, func(a=1)
+        if ctx.getChildCount() == 3:
+            arg_name = self.visit(ctx.getChild(0))
+            arg_value = self.visit(ctx.getChild(2))
+            
+            return f"{arg_name} = {arg_value}"
+        
         return self.visitChildren(ctx)
 
 
