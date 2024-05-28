@@ -75,7 +75,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
         'int': 'int',
         'float': 'float',
         'str': 'string',
-        'bool': 'bool'
+        'bool': 'bool',
+        'None': 'void'
     }
     
     comparison_operator_map = {
@@ -306,8 +307,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
             if params[-1] is None:
                 params.pop()
     
-        if 'self' in params:
-            params.remove('self')
+        # C++ does not support this as a first argument, let's skip it
+        params = [param for param in params if param.split(' ')[1] != 'self']
         
         result = []
         for i in range(len(params)):
