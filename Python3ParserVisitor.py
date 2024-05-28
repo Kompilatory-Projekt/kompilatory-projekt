@@ -926,27 +926,28 @@ class Python3ParserVisitor(ParseTreeVisitor):
             parent_argument = self.get_nth_parent(ctx, 8) # Argument is 8 levels up
             parent_expr_stmt = self.get_nth_parent(ctx, 9) # Expr_stmt is 9 levels up
             
-            # Check if atom is on the left side of an assignment eg. function(atom = 1)
+            # Check if the atom is on the left side of a keyword argument eg. function(atom = 1)
             is_lhs_of_keyword_argument = None
             if isinstance(parent_argument, Python3Parser.ArgumentContext):
-                is_keyword_argument = parent_argument.getChildCount() == 3
+                is_keyword_argument = parent_argument.getChildCount() == 3 # 3 children means and argument is a keyword argument
                 is_lhs_of_assignment = parent_argument.getChild(0) == self.get_nth_parent(ctx, 7) # 7 levels up is the test
                 
                 is_lhs_of_keyword_argument = (is_keyword_argument and is_lhs_of_assignment)
-                
+            
+            # Check is the atom in on the left side of an assignment eg. atom = 1
             is_being_assigned_to = None
             if isinstance(parent_expr_stmt, Python3Parser.Expr_stmtContext):
                 is_being_assigned_to = isinstance(parent_expr_stmt.getChild(1), Python3Parser.AnnassignContext) or parent_expr_stmt.getChildCount() == 3
             
-            # If atom is a lhs of an assignment or a keyword argument, return the name, don't check if it exists in scope
+            # If the atom is a lhs of an assignment or a keyword argument, return the name, don't check if it exists in scope because it's being defined
             if is_being_assigned_to or is_lhs_of_keyword_argument:
                 return self.visitChildren(ctx)
 
-            # If atom is a variable, funcion call or class name check if it exists in scope
+            # If the atom is a variable, funcion call or class name check if it exists in scope
             if not self.scopes.inScope(name):
                 raise NameError(f"{name} does not exist in any scope")
-            
-            return self.visitChildren(ctx)
+            else:
+                return self.visitChildren(ctx)
         
         return text
 
