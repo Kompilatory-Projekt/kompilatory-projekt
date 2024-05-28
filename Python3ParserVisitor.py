@@ -53,7 +53,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
             self.errorIfNotInScope(name)
             
             for scope in self.scopes:
-                for subscope in scope.values():
+                for subscope in scope.keys():
                     if name in scope[subscope]:
                         scope[subscope].remove(name)
                         break
@@ -365,10 +365,13 @@ class Python3ParserVisitor(ParseTreeVisitor):
         if ctx.getChildCount() == 3 and ctx.getChild(1).getText() == '=':
                 _type, value = utils.get_type_of(ctx.getChild(2).getText())
                 name = self.visit(ctx.getChild(0))
-                
+                print(name, _type, value)
+
                 self.scopes.addToCurrentScope(name, "variables")
-                if value[0] is not '{':
+                print("Added to scope", name)
+                if _type == 'bad_type' or _type == 'None':
                     _type = 'auto'
+                
                 result = f"{_type} {name} = {value}"
                 
                 return result
@@ -517,8 +520,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by Python3Parser#if_stmt.
     def visitIf_stmt(self, ctx:Python3Parser.If_stmtContext):
-        condition = self.visit(ctx.test(0))  # Visit the condition of the if statement
-        block = self.visit(ctx.block(0))  # Visit the block of the if statement
+        condition = self.visit(ctx.test(0))
+        block = self.visit(ctx.block(0))
         result = f"if ({condition}) {block}"
 
         for i in range(1, ctx.getChildCount()//4):
