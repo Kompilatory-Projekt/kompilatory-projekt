@@ -603,6 +603,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitExcept_clause(self, ctx:Python3Parser.Except_clauseContext):
         exception_type = self.map_exception_type(ctx)
         exception_alias = self.get_exception_alias(ctx)
+
+        self.scopes.addToCurrentScope(exception_alias, "variables")
+
         result = f"catch ({exception_type}& {exception_alias}) "
         
         return result
