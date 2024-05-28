@@ -363,29 +363,30 @@ class Python3ParserVisitor(ParseTreeVisitor):
         
         # Variable assignment eg. a = 2
         if ctx.getChildCount() == 3 and ctx.getChild(1).getText() == '=':
-                type, value = utils.get_type_of(ctx.getChild(2).getText())
+                _type, value = utils.get_type_of(ctx.getChild(2).getText())
                 name = self.visit(ctx.getChild(0))
                 
                 self.scopes.addToCurrentScope(name, "variables")
-                
-                result = f"{type} {name} = {value}"
+                if value[0] is not '{':
+                    _type = 'auto'
+                result = f"{_type} {name} = {value}"
                 
                 return result
             
         # Type-annotated assignment eg. a: int = 2
         elif isinstance(ctx.getChild(1), Python3Parser.AnnassignContext):
             name = self.visit(ctx.testlist_star_expr(0))
-            type = self.visit(ctx.annassign().test(0))
+            _type = self.visit(ctx.annassign().test(0))
             value = self.visit(ctx.annassign().test(1))
             
             # Check if value type is the same as the annotated type
             value_type, _ = utils.get_type_of(value)
-            if value_type != type:
-                raise TypeError(f"Type mismatch: {value_type} and {type}")
+            if value_type != _type:
+                raise TypeError(f"Type mismatch: {value_type} and {_type}")
             
             self.scopes.addToCurrentScope(name, "variables")
             
-            return f"{type} {name} = {value}"
+            return f"{_type} {name} = {value}"
                 
         return self.visitChildren(ctx)   
 
