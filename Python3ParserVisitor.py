@@ -1,6 +1,8 @@
 # Generated from Python3Parser.g4 by ANTLR 4.11.1
-import utils
 from collections import deque
+import re
+
+import utils
 
 from antlr4 import *
 if __name__ is not None and "." in __name__:
@@ -66,11 +68,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
             is_scope = self.inScope(name)
             if not is_scope:
                 raise NameError(f"{name} does not exist in the current scope")
-            
-        def errorIfInScope(self, name):
-            is_scope, subscope = self.inScope(name, subscope, return_subscope=True)
-            if is_scope:
-                raise NameError(f"{subscope} {name} already exists in the current scope")
             
     
     
@@ -198,18 +195,22 @@ class Python3ParserVisitor(ParseTreeVisitor):
         result = self.visitChildren(ctx)
 
         class_definitions = ""
+        function_definitions = ""
         main_code = ""
         eof_code = ""
 
         lines = result.split("\n")
         in_class = False
+        in_function = False
         brace_count = 0
 
         for line in lines:
             stripped_line = line.strip()
             if "class " in stripped_line:
                 in_class = True
-                    
+            elif re.match(r"^\s*[\w\[\]]+\s+\w+\s*\([^)]*\)\s*", line) is not None:
+                in_function = True
+
             if in_class:
                 class_definitions += line + "\n"
                 brace_count += stripped_line.count('{')
@@ -217,6 +218,13 @@ class Python3ParserVisitor(ParseTreeVisitor):
                 
                 if brace_count == 0:
                     in_class = False
+            elif in_function:
+                function_definitions += line + "\n"
+                brace_count += stripped_line.count('{')
+                brace_count -= stripped_line.count('}')
+                
+                if brace_count == 0:
+                    in_function = False
             elif "<EOF>" in stripped_line:
                 eof_code += "<EOF>\n"
             else:
@@ -232,6 +240,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
         program_result += """using namespace std; \n"""
         program_result += class_definitions
+        program_result += function_definitions
         program_result += """int main() {\n""" 
         program_result += main_code
         program_result += """return 0;\n}"""

@@ -65,3 +65,14 @@
     ```
 
 - Scopes
+    Input:
+    ```python
+    def funkcja(a: int) -> int:
+        return a
+
+    print(a)
+    ```
+    Output
+    ```
+    NameError: a does not exist in any scope
+    ```
