@@ -22,7 +22,10 @@ def main(argv):
 
     visitor = Python3ParserVisitor()
     output_code = visitor.visit(tree)
-    print(f"\nOUTPUT:\n{output_code}")
+
+    with open(argv[2], "a") as f:
+        f.write(output_code)
+        f.close()
 
 if __name__ == "__main__":
     main(sys.argv)
