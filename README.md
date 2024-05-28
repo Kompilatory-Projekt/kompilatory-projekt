@@ -18,8 +18,8 @@ To run this compiler, you need the following dependencies:
 1. **Clone the repository:**
 
     ```sh
-    git clone https://github.com/yourusername/python-to-cpp-compiler.git
-    cd python-to-cpp-compiler
+    git@github.com:Kompilatory-Projekt/kompilatory-projekt.git
+    cd kompilatory-projekt
     ```
 
 2. **Install the dependencies:**
