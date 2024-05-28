@@ -1,4 +1,42 @@
-### Compilation examples
+# Python to C++ Compiler
+
+This project is a Python to C++ compiler that utilizes ANTLR4 for parsing. The implementation is in Python and generates a `output.cpp` file from a given Python source file.
+
+## Getting Started
+
+### Prerequisites
+
+To run this compiler, you need the following dependencies:
+
+- Python 3.x
+- ANTLR runtime 4.11.1
+- FastAPI
+- Uvicorn
+
+### Installation
+
+1. **Clone the repository:**
+
+    ```sh
+    git clone https://github.com/yourusername/python-to-cpp-compiler.git
+    cd python-to-cpp-compiler
+    ```
+
+2. **Install the dependencies:**
+
+    ```sh
+    pip install antlr4-python3-runtime==4.11.1 fastapi uvicorn
+    ```
+
+### Usage
+
+To compile a Python file to C++, run the following command:
+
+```sh
+python main.py FILE_TO_CONVERT.py
+```
+
+## Compilation examples
 - Variable assignment
     - `a=2` -> `int a = 2;`
     - More complex types:   
