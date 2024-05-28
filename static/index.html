@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python to C++ Compiler</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">Python to C++ Compiler</h1>
+        <div class="flex h-44">
+            <!-- Left card for input -->
+            <div class="w-1/2 p-4">
+                <div class="bg-white shadow-md rounded-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Input Python Code</h2>
+                    <form id="compile-form">
+                        <textarea id="python-code" name="python_code" class="h-72 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your Python code here..."></textarea>
+                        <button type="submit" class="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Compile</button>
+                    </form>
+                </div>
+            </div>
+            <!-- Right card for output -->
+            <div class="w-1/2 p-4">
+                <div class="bg-white shadow-md rounded-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Output C++ Code</h2>
+                    <pre id="cpp-output" class="w-full p-2 border border-gray-300 rounded bg-gray-100 h-72 overflow-auto"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('compile-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const pythonCode = document.getElementById('python-code').value;
+
+            const response = await fetch('/compile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: pythonCode })
+            });
+
+            const result = await response.json();
+            document.getElementById('cpp-output').textContent = result.cpp_code;
+        });
+    </script>
+</body>
+</html>
