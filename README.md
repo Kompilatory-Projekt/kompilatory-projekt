@@ -10,7 +10,8 @@
         ```
 
 - If/else statement
-    Input:
+
+  Input:
     ```python
     if '2' is not 2:
         pass
@@ -27,6 +28,7 @@
 
 - For loops
     - Basic for loop
+  
         Input:
         ```python
         for i in range(1, 10, 1):
@@ -51,6 +53,7 @@
         ```
 
 - While loop
+
     Input:
     ```python
     while True:
@@ -62,6 +65,7 @@
     }
     ```
 - Try/catch statements
+
     Input
     ```python
     try:
@@ -78,6 +82,7 @@
     ```
 
 - Function declaration
+
     Input
     ```python
     def funkcja(a: str, b: bool, c) -> str:
@@ -91,6 +96,7 @@
     ```
 
 - Print statement
+
     Input
     ```python
     print()
@@ -129,6 +135,7 @@
     ```
 
 - Scopes
+
     Input:
     ```python
     def funkcja(a: int) -> int:
