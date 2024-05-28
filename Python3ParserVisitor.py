@@ -266,8 +266,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
             # Assignment
             if ctx.getChild(1).getText() == '=':
                 _type, _value = utils.get_type_of(ctx.getChild(2).getText())
-                result = f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value}"
-                return result
+                if _value[0] is not '{':
+                    _type = 'auto'
+                return f"{_type} {self.visitChildren(ctx.getChild(0))} = {_value}"
         # Convert ** to pow
                        
         return self.visitChildren(ctx)   

@@ -46,7 +46,7 @@ def get_type_of(value: str):
             elif value[0] == '[' or value[0] == '(' or value[0] == '{':
                 _type = get_type_of_structure(value)
             else:
-                return bad_type(), value
+                return 'None', value
             
     return _type, repair_value(value)
 
@@ -61,26 +61,26 @@ def repair_value(value: str):
     return value
 
 def get_bracketing(value: str): # [[1,2,3],[4,5,6],[]] good,    [1,2,3],[4,5,6],[] bad
-    value = value.strip()[1:-1] 
-    result = []
-    level = 0
+     value = value.strip()[1:-1] 
+     result = []
+     level = 0
 
-    while value:
-        for i in range(len(value)):
-            if value[i] in ('[', '(', '{'):
-                level += 1
-            elif value[i] in (']', ')', '}'):
-                level -= 1
+     while value:
+         for i in range(len(value)):
+             if value[i] in ('[', '(', '{'):
+                 level += 1
+             elif value[i] in (']', ')', '}'):
+                 level -= 1
 
-            if level == 0 and value[i] == ',':
-                result.append(value[:i])
-                value = value[i+1:]
-                break
-        else:
-            result.append(value)
-            value = ''
+             if level == 0 and value[i] == ',':
+                 result.append(value[:i])
+                 value = value[i+1:]
+                 break
+         else:
+             result.append(value)
+             value = ''
 
-    return result
+     return result
 
 def print_tree(tree, parser):
     tree_str = tree.toStringTree(recog=parser)
