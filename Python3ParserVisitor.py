@@ -404,7 +404,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
             self.scopes.addToCurrentScope(name, "variables")
             
             return f"{_type} {name} = {value}"
-                
         return self.visitChildren(ctx)   
 
 
@@ -563,6 +562,9 @@ class Python3ParserVisitor(ParseTreeVisitor):
 
         test = self.visit(ctx.testlist())
         param = self.visit(ctx.exprlist())[0] #TODO: Works only for one param
+        
+        self.scopes.addToCurrentScope(param, "variables")
+        
         block = self.visit(ctx.block(0))
 
         if test.startswith("range"):
@@ -601,7 +603,6 @@ class Python3ParserVisitor(ParseTreeVisitor):
     def visitExcept_clause(self, ctx:Python3Parser.Except_clauseContext):
         exception_type = self.map_exception_type(ctx)
         exception_alias = self.get_exception_alias(ctx)
-        
         result = f"catch ({exception_type}& {exception_alias}) "
         
         return result

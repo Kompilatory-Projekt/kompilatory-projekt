@@ -23,7 +23,7 @@ def main(argv):
     visitor = Python3ParserVisitor()
     output_code = visitor.visit(tree)
 
-    with open(argv[2], "a") as f:
+    with open(argv[2], "w") as f:
         f.write(output_code)
         f.close()
 
