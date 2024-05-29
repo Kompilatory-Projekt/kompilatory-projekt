@@ -23,6 +23,18 @@ def main(argv):
     visitor = Python3ParserVisitor()
     output_code = visitor.visit(tree)
 
+    lines = output_code.split("\n")
+    output_code = ""
+    indent = 0
+    for line in lines:
+        line = line.strip()
+
+        if line.startswith("}"):
+            indent -= 1
+        output_code += "\t" * indent + line + "\n"
+        if line.endswith("{"):
+            indent += 1
+
     with open(argv[2], "w") as f:
         f.write(output_code)
         f.close()

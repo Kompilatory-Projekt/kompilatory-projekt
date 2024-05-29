@@ -1,6 +1,7 @@
 import antlr4
 
 def bad_type() -> str:
+    raise Exception('Bad type')
     return 'bad_type'
 
 def get_type_of_structure(value: str): # [[1,2,3],[4,5,6],[]] good,    [1,2,3],[4,5,6],[] bad
