@@ -11,8 +11,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="static")
 
+
 class ConvertCodeRequest(BaseModel):
     code: str
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -21,7 +23,8 @@ async def read_root(request: Request):
 
 @app.post("/compile")
 async def compile_code(code_request: ConvertCodeRequest):
-
-    output_code = main(code_request.code)
-    
-    return {"output_code": output_code}
+    try:
+        output_code = main(code_request.code)
+        return {"output_code": output_code, "error": None}
+    except Exception as e:
+        return {"output_code": "", "error": str(e)}

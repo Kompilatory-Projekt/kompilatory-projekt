@@ -16,7 +16,7 @@
                     <h2 class="text-xl font-bold mb-4">Input Python Code</h2>
                     <form id="compile-form">
                         <textarea id="python-code" name="python_code" class="h-72 w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your Python code here..."></textarea>
-                        <button type="submit" class="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Compile</button>
+                        <button type="submit" id="compile-button" class="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Compile</button>
                     </form>
                 </div>
             </div>
@@ -24,13 +24,40 @@
             <div class="w-1/2 p-4">
                 <div class="bg-white shadow-md rounded-lg p-6">
                     <h2 class="text-xl font-bold mb-4">Output C++ Code</h2>
-                    <pre id="cpp-output" class="w-full p-2 border border-gray-300 rounded bg-gray-100 h-72 overflow-auto"></pre>
+                    <pre id="cpp-output" class="w-full p-2 border border-gray-300 rounded bg-gray-100 h-72 overflow-auto" style="font-size:14px;"></pre>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        const compileButton = document.getElementById('compile-button');
+        const pythonCodeTextarea = document.getElementById('python-code');
+
+        pythonCodeTextarea.addEventListener('input', function() {
+            compileButton.classList.remove('bg-green-500');
+            compileButton.classList.remove('hover:bg-green-600');
+            compileButton.classList.remove('bg-red-500');
+            compileButton.classList.remove('hover:bg-red-600');
+            compileButton.classList.add('bg-blue-500');
+            compileButton.classList.add('hover:bg-blue-700');
+            compileButton.textContent = 'Compile';
+        });
+
+        document.getElementById('python-code').addEventListener('keydown', function(event) {
+            if (event.key == 'Tab') {
+                event.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+    
+                // Insert the tab character at the cursor position
+                this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
+    
+                // Put the cursor back in the right place
+                this.selectionStart = this.selectionEnd = start + 1;
+            }
+        });
+
         document.getElementById('compile-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const pythonCode = document.getElementById('python-code').value;
@@ -47,7 +74,21 @@
     
             const data = await response.json();
     
-            document.getElementById('cpp-output').textContent = data.output_code;
+            if (data.error) {
+                compileButton.classList.remove('bg-blue-500');
+                compileButton.classList.remove('hover:bg-blue-700');
+                compileButton.classList.add('bg-red-500');
+                compileButton.classList.add('hover:bg-red-600');
+                compileButton.textContent = 'Error!';
+            } else {
+                compileButton.classList.remove('bg-blue-500');
+                compileButton.classList.remove('hover:bg-blue-700');
+                compileButton.classList.add('bg-green-500');
+                compileButton.classList.add('hover:bg-green-600');
+                compileButton.textContent = 'Compiled!';
+            }
+
+            document.getElementById('cpp-output').textContent = data.error ? data.error : data.output_code;
         });
     </script>
 </body>

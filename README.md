@@ -26,7 +26,10 @@ To run this compiler, you need the following dependencies:
 
     ```sh
     pip install antlr4-python3-runtime==4.11.1 fastapi uvicorn
+    uvicorn app:app
     ```
+
+    Got to localhost `http://127.0.0.1:8000`
 
 ### Usage
 

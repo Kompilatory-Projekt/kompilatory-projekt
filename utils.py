@@ -2,6 +2,7 @@ import subprocess
 import antlr4
 
 def bad_type() -> str:
+    raise Exception('Bad type')
     return 'bad_type'
 
 def get_type_of_structure(value: str): # [[1,2,3],[4,5,6],[]] good,    [1,2,3],[4,5,6],[] bad
@@ -119,17 +120,16 @@ def format_tree(tree_string):
     return formatted_string
 
 def format_cpp_code(code: str) -> str:
-    # Write the C++ code to a temporary file
-    with open('temp.cpp', 'w') as temp_file:
-        temp_file.write(code)
-    
-    # Run clang-format on the temporary file
-    result = subprocess.run(['clang-format', 'temp.cpp'], capture_output=True, text=True)
-    
-    # Read the formatted code from the temporary file
-    formatted_code = result.stdout
-    
-    # Clean up the temporary file
-    subprocess.run(['rm', 'temp.cpp'])  # Use `del` on Windows
-    
-    return formatted_code
+    lines = code.split("\n")
+    code = ""
+    indent = 0
+    for line in lines:
+        line = line.strip()
+
+        if line.startswith("}"):
+            indent -= 1
+        code += "\t" * indent + line + "\n"
+        if line.endswith("{"):
+            indent += 1
+            
+    return code

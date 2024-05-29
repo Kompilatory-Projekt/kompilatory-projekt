@@ -26,9 +26,9 @@ def main(input):
 
     visitor = Python3ParserVisitor()
     output_code = visitor.visit(tree)
-    
-    # output_code = format_cpp_code(output_code)
-        
+
+    output_code = format_cpp_code(output_code)
+
     return output_code
 
 if __name__ == "__main__":
