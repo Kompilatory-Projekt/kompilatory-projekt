@@ -313,7 +313,7 @@ class Python3ParserVisitor(ParseTreeVisitor):
         result = []
         for i in range(len(params)):
             if len(params[i].split()) == 1:
-                continue;
+                continue
             
             result.append(params[i])
             if i < len(params)-1 and len(params[i+1].split()) == 1:
@@ -379,10 +379,8 @@ class Python3ParserVisitor(ParseTreeVisitor):
         if ctx.getChildCount() == 3 and ctx.getChild(1).getText() == '=':
                 _type, value = utils.get_type_of(ctx.getChild(2).getText())
                 name = self.visit(ctx.getChild(0))
-                print(name, _type, value)
 
                 self.scopes.addToCurrentScope(name, "variables")
-                print("Added to scope", name)
                 if _type == 'bad_type' or _type == 'None':
                     _type = 'auto'
                 

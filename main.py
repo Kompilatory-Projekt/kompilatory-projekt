@@ -6,10 +6,14 @@ from Python3ParserVisitor import Python3ParserVisitor
 
 from utils import print_tree, format_cpp_code
 
-def main(argv):
-    input_code = ''''''
-    with open(argv[1], 'r') as f:
-        input_code = f.read()
+def main(input):
+    if input.endswith('.py'):
+        input_code = ''''''
+        with open(input, 'r') as f:
+            input_code = f.read()
+            
+    else:
+        input_code = input
 
     input_stream = InputStream(input_code)
     lexer = Python3Lexer(input_stream)
@@ -22,10 +26,10 @@ def main(argv):
 
     visitor = Python3ParserVisitor()
     output_code = visitor.visit(tree)
-
-    with open(argv[2], "w") as f:
-        f.write(output_code)
-        f.close()
+    
+    # output_code = format_cpp_code(output_code)
+        
+    return output_code
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1])
