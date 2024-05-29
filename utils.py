@@ -1,3 +1,4 @@
+import subprocess
 import antlr4
 
 def bad_type() -> str:
@@ -117,3 +118,19 @@ def format_tree(tree_string):
             formatted_string += tree_string[i]
         i += 1
     return formatted_string
+
+def format_cpp_code(code: str) -> str:
+    # Write the C++ code to a temporary file
+    with open('temp.cpp', 'w') as temp_file:
+        temp_file.write(code)
+    
+    # Run clang-format on the temporary file
+    result = subprocess.run(['clang-format', 'temp.cpp'], capture_output=True, text=True)
+    
+    # Read the formatted code from the temporary file
+    formatted_code = result.stdout
+    
+    # Clean up the temporary file
+    subprocess.run(['rm', 'temp.cpp'])  # Use `del` on Windows
+    
+    return formatted_code
